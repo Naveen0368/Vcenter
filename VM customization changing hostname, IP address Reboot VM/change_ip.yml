@@ -1,0 +1,41 @@
+---
+- name: Change IP address of the VM
+  hosts: ubuntu_servers
+  become: yes
+  vars:
+    new_ip_address: "10.128.7.208"  # Change this to your desired IP address
+    netmask: "255.255.255.0"        # Adjust the netmask if needed
+    gateway: "10.128.7.1"           # Adjust the gateway if needed
+    interface_name: "ens160"        # Updated to the appropriate interface name
+
+  tasks:
+    - name: Validate the new network configuration
+      ansible.builtin.debug:
+        msg: |
+          Interface: {{ interface_name }}
+          New IP Address: {{ new_ip_address }}
+          Netmask: {{ netmask }}
+          Gateway: {{ gateway }}
+
+    - name: Configure the network interface using a template
+      ansible.builtin.template:
+        dest: /etc/netplan/01-netcfg.yaml
+        src: netplan_template.j2
+
+    - name: Apply netplan configuration
+      ansible.builtin.command:
+        cmd: netplan apply
+
+    - name: Wait for the network to come up
+      ansible.builtin.pause:
+        minutes: 1
+
+    - name: Ping the new IP address
+      ansible.builtin.command:
+        cmd: ping -c 3 {{ new_ip_address }}
+      register: ping_output
+      ignore_errors: true
+
+    - name: Display ping result
+      ansible.builtin.debug:
+        var: ping_output.stdout

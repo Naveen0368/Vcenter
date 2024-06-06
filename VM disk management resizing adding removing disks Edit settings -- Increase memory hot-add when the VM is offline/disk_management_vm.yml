@@ -1,0 +1,141 @@
+---
+- name: Manage VM operations in VMware vCenter
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - community.vmware
+  vars:
+    vcenter_hostname: "10.128.7.21"
+    vcenter_username: "devops@vsphere.local"
+    vcenter_password: "jC3`@JRrW9m"
+    datacenter_name: "GLOBAL-SF10-LAB"
+    cluster_name: "Linux Cluster"
+    vm_name: "vm-test-30-05"
+    target_host: "ul-sf10-502-lab-esx13.unitedlayer.com"
+    target_datastore: "esx11-DS3"
+    disk_size_gb: 40
+    new_disk_size_gb: 60
+    memory_size_mb: 8192
+
+  tasks:
+    - name: Find the VM by name
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}"
+      delegate_to: localhost
+      register: vm_info
+
+    - name: Print VM information
+      debug:
+        var: vm_info
+
+    - name: Power off VM
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        state: poweredoff
+      when: vm_info.instance.hw_power_status == 'poweredOn'
+
+    - name: Increase disk size
+      community.vmware.vmware_guest_disk:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        datacenter: "{{ datacenter_name }}"
+        disk:
+          - size_gb: "{{ new_disk_size_gb }}"
+            state: present
+            type: thin
+            unit_number: 0
+            scsi_controller: 0
+            scsi_type: paravirtual
+      when: vm_info is defined and vm_info.instance is defined
+
+    - name: Add a new disk
+      community.vmware.vmware_guest_disk:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        datacenter: "{{ datacenter_name }}"
+        disk:
+          - size_gb: "{{ disk_size_gb }}"
+            state: present
+            type: thin
+            unit_number: 1
+            scsi_controller: 0
+            scsi_type: paravirtual
+      when: vm_info is defined and vm_info.instance is defined
+
+    - name: Remove a disk
+      community.vmware.vmware_guest_disk:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        datacenter: "{{ datacenter_name }}"
+        disk:
+          - size_gb: "{{ disk_size_gb }}"
+            state: absent
+            unit_number: 1
+            scsi_controller: 0
+            scsi_type: paravirtual
+      when: vm_info is defined and vm_info.instance is defined
+
+    - name: Modify VM hardware settings (memory)
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        datacenter: "{{ datacenter_name }}"
+        hardware:
+          memory_mb: "{{ memory_size_mb }}"
+          num_cpus: "{{ vm_info.instance.hw_processor_count }}"
+      when: vm_info is defined and vm_info.instance is defined and vm_info.instance.hw_power_status == 'poweredOff'
+
+    - name: Power on VM (needed for vMotion tasks)
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        datacenter: "{{ datacenter_name }}"
+        state: poweredon
+      when: vm_info is defined and vm_info.instance is defined and vm_info.instance.hw_power_status == 'poweredOff'
+
+    - name: Migrate VM to another host (vMotion)
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        datacenter: "{{ datacenter_name }}"
+        esxi_hostname: "{{ target_host }}"
+      when: vm_info is defined and vm_info.instance is defined
+
+    - name: Migrate VM to another datastore (storage vMotion)
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ vm_name }}"
+        datacenter: "{{ datacenter_name }}"
+        datastore: "{{ target_datastore }}"
+      when: vm_info is defined and vm_info.instance is defined
+

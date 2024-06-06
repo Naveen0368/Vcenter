@@ -1,0 +1,32 @@
+---
+- name: Manage VM disks and memory in VMware vCenter
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - community.vmware
+  vars:
+    vcenter_hostname: "10.128.7.2"
+    vcenter_username: "devops@vsphere.local"
+    vcenter_password: "jC3`@JRrW9m"
+    datacenter_name: "GLOBAL-SF10-LAB"  # Add your datacenter name here
+    cluster_name: "Linux Cluster"  # Add your cluster name here
+    vm_name: "vm-test-30-05"
+    disk_size_gb: 20
+    new_disk_size_gb: 40
+    memory_size_mb: 8192
+
+  tasks:
+    - name: Find the VM by name
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}"
+      delegate_to: localhost
+      register: vm_info
+
+    - name: Debug VM info
+      debug:
+        var: vm_info

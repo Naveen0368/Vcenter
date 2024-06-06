@@ -1,0 +1,15 @@
+---
+- name: Display network interfaces on the VM
+  hosts: ubuntu_servers
+  become: yes
+  become_method: sudo
+  vars:
+    ansible_become_password: 'Ubuntu@2024'
+  tasks:
+    - name: Display network interfaces
+      ansible.builtin.command: ip a
+      register: ip_output
+
+    - name: Print network interfaces
+      ansible.builtin.debug:
+        var: ip_output.stdout

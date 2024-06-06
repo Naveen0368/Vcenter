@@ -1,0 +1,25 @@
+---
+- name: Power off vSphere VM
+  hosts: localhost
+  gather_facts: no
+  connection: local
+  collections:
+    - community.vmware
+  vars:
+    vcenter_hostname: "10.128.7.21"
+    vcenter_username: "devops@vsphere.local"
+    vcenter_password: "jC3`@JRrW9m"
+    datacenter_name: "GLOBAL-SF10-LAB"
+    folder_name: ""  # Use '' if the VM is in the root folder
+    vm_name: "vm-test-30-05"
+  tasks:
+    - name: Power off VM
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ folder_name }}"
+        name: "{{ vm_name }}"
+        state: powered-off

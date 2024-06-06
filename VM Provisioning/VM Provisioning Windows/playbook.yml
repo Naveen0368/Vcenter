@@ -1,0 +1,83 @@
+---
+- name: Create VM from template in VMware Workstation
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - community.vmware
+
+  vars:
+    vsphere_user: "devops@vsphere.local"
+    vsphere_password: "jC3`@JRrW9m"
+    vsphere_server: "10.128.7.21"
+    validate_certs: false
+    datacenter_name: "GLOBAL-SF10-LAB"
+    cluster_name: "Linux Cluster"
+    datastore_name: "esx11-ds2"
+    network_name: "VM Network"
+    template_name: "devopswin22-template"
+    host_name: "ul-sf10-502-lab-esx11.unitedlayer.com"
+    vm_name: "vm-test-04-06"
+    ansible_python_interpreter: /usr/bin/python3
+    default_disk_size_gb: 75
+
+  tasks:
+    - name: Gather information about datacenter
+      community.vmware.vmware_datacenter_info:
+        hostname: "{{ vsphere_server }}"
+        username: "{{ vsphere_user }}"
+        password: "{{ vsphere_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: datacenter_info
+
+    - name: Gather information about cluster
+      community.vmware.vmware_cluster_info:
+        hostname: "{{ vsphere_server }}"
+        username: "{{ vsphere_user }}"
+        password: "{{ vsphere_password }}"
+        validate_certs: "{{ validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        cluster_name: "{{ cluster_name }}"
+      register: cluster_info
+
+    - name: Gather information about datastore
+      community.vmware.vmware_datastore_info:
+        hostname: "{{ vsphere_server }}"
+        username: "{{ vsphere_user }}"
+        password: "{{ vsphere_password }}"
+        validate_certs: "{{ validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ datastore_name }}"
+      register: datastore_info
+
+    - name: Gather information about template
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vsphere_server }}"
+        username: "{{ vsphere_user }}"
+        password: "{{ vsphere_password }}"
+        validate_certs: "{{ validate_certs }}"
+        name: "{{ template_name }}"
+        datacenter: "{{ datacenter_name }}"
+      register: template_info
+
+    - name: Deploy VM from template
+      community.vmware.vmware_guest:
+        hostname: "{{ vsphere_server }}"
+        username: "{{ vsphere_user }}"
+        password: "{{ vsphere_password }}"
+        validate_certs: "{{ validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        cluster: "{{ cluster_name }}"
+        folder: "/GLOBAL-SF10-LAB/vm/"
+        name: "{{ vm_name }}"
+        template: "{{ template_name }}"
+        datastore: "{{ datastore_name }}"
+        networks:
+          - name: "{{ network_name }}"
+        hardware:
+          memory_mb: 4096
+          num_cpus: 2
+        disk:
+          - size_gb: "{{ default_disk_size_gb }}"
+            type: thin
+        state: poweredon
+      delegate_to: localhost

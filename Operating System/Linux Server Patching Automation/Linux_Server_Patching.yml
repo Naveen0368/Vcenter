@@ -1,0 +1,46 @@
+---
+- name: Linux Server Patching Automation
+  hosts: ubuntu_servers
+  become: yes
+  become_method: sudo
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Update the package list
+      apt:
+        update_cache: yes
+
+    - name: Upgrade all packages to the latest version
+      apt:
+        upgrade: dist
+
+    - name: Remove unused packages and dependencies
+      apt:
+        autoremove: yes
+        purge: yes
+
+    - name: Clean up the local repository of retrieved package files
+      apt:
+        autoclean: yes
+
+    - name: Reboot the server if required by the updates
+      reboot:
+        msg: "Reboot initiated by Ansible for patching"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+
+    - name: Wait for the server to come back up
+      wait_for_connection:
+        connect_timeout: 20
+        sleep: 5
+        delay: 5
+        timeout: 300
+      become: no
+
+    - name: Perform post-reboot tasks (if any)
+      debug:
+        msg: "Server has rebooted successfully"

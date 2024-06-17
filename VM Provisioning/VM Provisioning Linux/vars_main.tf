@@ -1,33 +1,29 @@
 variable "vsphere_user" {
   description = "vSphere username"
-  default     = "devops@vsphere.local"
+  type        = string
 }
 
 variable "vsphere_password" {
   description = "vSphere password"
-  default     = "jC3`@JRrW9m"
+  type        = string
+  sensitive   = true
 }
 
 variable "vsphere_server" {
   description = "vSphere server IP"
-  default     = "10.128.7.21"
-}
-
-variable "allow_unverified_ssl" {
-  description = "Whether to allow unverified SSL certificates"
-  default     = true
+  type        = string
 }
 
 variable "vm_name" {
-  description = "Name for the virtual machine"
+  description = "vm-test-12-06"
   type        = string
 }
 
 provider "vsphere" {
-  user                 = var.vsphere_user
-  password             = var.vsphere_password
-  vsphere_server       = var.vsphere_server
-  allow_unverified_ssl = var.allow_unverified_ssl
+  user                 = "${var.vsphere_user}"
+  password             = "${var.vsphere_password}"
+  vsphere_server       = "${var.vsphere_server}"
+  allow_unverified_ssl = true
 }
 
 data "vsphere_datacenter" "dc" {
@@ -35,7 +31,7 @@ data "vsphere_datacenter" "dc" {
 }
 
 data "vsphere_compute_cluster" "cluster" {
-  name          = "Linux Cluster" # Replace with your cluster name
+  name          = "Linux Cluster"
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
@@ -45,7 +41,7 @@ data "vsphere_datastore" "datastore" {
 }
 
 data "vsphere_network" "network" {
-  name          = "VM Network" # Replace with your network name
+  name          = "VM Network"
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
@@ -55,12 +51,12 @@ data "vsphere_virtual_machine" "template" {
 }
 
 data "vsphere_host" "host" {
-  name          = "ul-sf10-502-lab-esx11.unitedlayer.com" # Replace with your host name
+  name          = "ul-sf10-502-lab-esx11.unitedlayer.com"
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
 resource "vsphere_virtual_machine" "vm" {
-  name             = "vm-test-12-06"
+  name             = "${var.vm_name}"
   resource_pool_id = data.vsphere_compute_cluster.cluster.resource_pool_id
   datastore_id     = data.vsphere_datastore.datastore.id
   host_system_id   = data.vsphere_host.host.id
@@ -69,7 +65,6 @@ resource "vsphere_virtual_machine" "vm" {
   memory    = 4096
   guest_id  = data.vsphere_virtual_machine.template.guest_id
   scsi_type = data.vsphere_virtual_machine.template.scsi_type
-
 
   network_interface {
     network_id   = data.vsphere_network.network.id
@@ -88,10 +83,28 @@ resource "vsphere_virtual_machine" "vm" {
   }
 }
 
-output "vm_details" {
-  value = {
-    vm_name    = vsphere_virtual_machine.vm.name
-    host_name  = data.vsphere_host.host.name
-    ip_address = vsphere_virtual_machine.vm.default_ip_address
-  }
+data "vsphere_virtual_machine" "vm_info" {
+  name          = vsphere_virtual_machine.vm.name
+  datacenter_id = data.vsphere_datacenter.dc.id
+  depends_on    = [vsphere_virtual_machine.vm]
+}
+
+output "vm_name" {
+  description = "The name of the created virtual machine"
+  value       = vsphere_virtual_machine.vm.name
+}
+
+output "vm_id" {
+  description = "The ID of the created virtual machine"
+  value       = vsphere_virtual_machine.vm.id
+}
+
+output "vm_ip" {
+  description = "The IP address of the created virtual machine"
+  value       = data.vsphere_virtual_machine.vm_info.guest_ip_address
+}
+
+output "vm_hostname" {
+  description = "The hostname of the created virtual machine"
+  value       = data.vsphere_virtual_machine.vm_info.guest_hostname
 }

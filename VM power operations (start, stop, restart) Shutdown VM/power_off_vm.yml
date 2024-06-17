@@ -11,7 +11,7 @@
     vcenter_password: "jC3`@JRrW9m"
     datacenter_name: "GLOBAL-SF10-LAB"
     folder_name: ""  # Use '' if the VM is in the root folder
-    vm_name: "vm-test-30-05"
+    vm_name: "vm-test-12-06"
   tasks:
     - name: Power off VM
       community.vmware.vmware_guest:

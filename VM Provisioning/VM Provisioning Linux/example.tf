@@ -1,21 +1,17 @@
-variable "vsphere_user" {
+variable "username" {
   description = "vSphere username"
-  default     = "devops@vsphere.local"
+  type        = string
 }
 
-variable "vsphere_password" {
+variable "password" {
   description = "vSphere password"
-  default     = "jC3`@JRrW9m"
+  type        = string
+  sensitive   = true
 }
 
 variable "vsphere_server" {
   description = "vSphere server IP"
-  default     = "10.128.7.21"
-}
-
-variable "allow_unverified_ssl" {
-  description = "Whether to allow unverified SSL certificates"
-  default     = true
+  type        = string
 }
 
 variable "vm_name" {
@@ -24,10 +20,10 @@ variable "vm_name" {
 }
 
 provider "vsphere" {
-  user                 = var.vsphere_user
-  password             = var.vsphere_password
+  user                 = var.username
+  password             = var.password
   vsphere_server       = var.vsphere_server
-  allow_unverified_ssl = var.allow_unverified_ssl
+  allow_unverified_ssl = true
 }
 
 data "vsphere_datacenter" "dc" {
@@ -60,7 +56,7 @@ data "vsphere_host" "host" {
 }
 
 resource "vsphere_virtual_machine" "vm" {
-  name             = "vm-test-12-06"
+  name             = var.vm_name
   resource_pool_id = data.vsphere_compute_cluster.cluster.resource_pool_id
   datastore_id     = data.vsphere_datastore.datastore.id
   host_system_id   = data.vsphere_host.host.id
@@ -69,7 +65,6 @@ resource "vsphere_virtual_machine" "vm" {
   memory    = 4096
   guest_id  = data.vsphere_virtual_machine.template.guest_id
   scsi_type = data.vsphere_virtual_machine.template.scsi_type
-
 
   network_interface {
     network_id   = data.vsphere_network.network.id
@@ -86,6 +81,12 @@ resource "vsphere_virtual_machine" "vm" {
   clone {
     template_uuid = data.vsphere_virtual_machine.template.id
   }
+}
+
+data "vsphere_virtual_machine" "vm_info" {
+  name          = vsphere_virtual_machine.vm.name
+  datacenter_id = data.vsphere_datacenter.dc.id
+  depends_on    = [vsphere_virtual_machine.vm]
 }
 
 output "vm_details" {

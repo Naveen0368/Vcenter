@@ -1,0 +1,90 @@
+---
+- name: Increase CPU of VM
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - community.vmware
+
+  vars:
+    vcenter_hostname: "10.128.7.21"
+    vcenter_username: "devops@vsphere.local"
+    vcenter_password: "jC3`@JRrW9m"
+    datacenter_name: "GLOBAL-SF10-LAB"
+    cluster_name: "Linux Cluster"
+    vm_name: "vm-test-30-05"
+    new_cpu_count: 4
+
+  tasks:
+    - name: Gather VM facts
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}"
+      register: vm_info
+
+    - name: Print VM power state
+      debug:
+        msg: "VM {{ vm_name }} is {{ vm_info.instance.hw_power_status }}"
+
+    - name: Increase CPU count when VM is powered on
+      when: vm_info.instance.hw_power_status == 'poweredOn'
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        cluster: "{{ cluster_name }}"
+        name: "{{ vm_name }}"
+        state: poweredon
+        hardware:
+          num_cpus: "{{ new_cpu_count }}"
+        wait_for_ip_address: no
+
+    - name: Increase CPU count when VM is powered off
+      when: vm_info.instance.hw_power_status == 'poweredOff'
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        cluster: "{{ cluster_name }}"
+        name: "{{ vm_name }}"
+        state: poweredoff
+        hardware:
+          num_cpus: "{{ new_cpu_count }}"
+        wait_for_ip_address: no
+
+    - name: Power on VM if it was powered off
+      when: vm_info.instance.hw_power_status == 'poweredOff'
+      community.vmware.vmware_guest_powerstate:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        cluster: "{{ cluster_name }}"
+        name: "{{ vm_name }}"
+        state: poweredon
+
+    - name: Verify CPU count after update
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}"
+      register: vm_info_after
+
+    - name: Debug VM info after update
+      debug:
+        var: vm_info_after
+
+    - name: Print new CPU count
+      debug:
+        msg: "VM {{ vm_name }} now has {{ vm_info_after.instance.hw_processor_count }} CPUs"

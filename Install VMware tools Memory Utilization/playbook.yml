@@ -1,0 +1,64 @@
+---
+- name: Install VMware Tools and Check Memory Utilization
+  hosts: ubuntu_servers
+  become: yes
+  become_method: sudo
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Update the package list
+      apt:
+        update_cache: yes
+
+    - name: Install prerequisites for VMware Tools
+      apt:
+        name:
+          - build-essential
+          - "linux-headers-{{ ansible_kernel }}"
+          - open-vm-tools
+        state: present
+
+    - name: Ensure open-vm-tools is running
+      service:
+        name: open-vm-tools
+        state: started
+        enabled: yes
+
+    - name: Remove unused packages and dependencies
+      apt:
+        autoremove: yes
+        purge: yes
+
+    - name: Clean up the local repository of retrieved package files
+      apt:
+        autoclean: yes
+
+    - name: Reboot the server if required by the updates
+      reboot:
+        msg: "Reboot initiated by Ansible for VMware Tools installation"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+
+    - name: Wait for the server to come back up
+      wait_for_connection:
+        connect_timeout: 20
+        sleep: 5
+        delay: 5
+        timeout: 300
+      become: no
+
+    - name: Check memory utilization
+      shell: free -m
+      register: memory_utilization
+
+    - name: Print memory utilization
+      debug:
+        msg: "{{ memory_utilization.stdout }}"
+
+    - name: Perform post-reboot tasks (if any)
+      debug:
+        msg: "Server has rebooted and VMware Tools installed successfully"

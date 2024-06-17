@@ -1,0 +1,62 @@
+---
+- name: Linux Decommission VM in VMware vCenter
+  hosts: localhost
+  gather_facts: no
+  vars:
+    vcenter_hostname: "10.128.7.21"
+    vcenter_username: "devops@vsphere.local"
+    vcenter_password: "jC3`@JRrW9m"
+    vm_name: "vm-test-04-06"
+    datacenter_name: "GLOBAL-SF10-LAB"
+
+  tasks:
+    - name: Ensure the VM is powered off
+      community.vmware.vmware_guest_powerstate:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}"
+        state: powered-off
+      delegate_to: localhost
+
+    - name: Remove VM from vCenter inventory
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}"
+        state: absent
+      delegate_to: localhost
+
+    - name: Find the VM folder path
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}"
+      delegate_to: localhost
+      register: vm_info
+
+    - name: Set the datastore path
+      set_fact:
+        datastore_path: "{{ vm_info.virtual_machines[0].vm_path.split('/')[0] }}"
+
+    - name: Delete VM files from datastore manually
+      community.vmware.vmware_host_datastore:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter: "{{ datacenter_name }}"
+        datastore: "{{ datastore_path }}"
+        folder: "{{ vm_info.virtual_machines[0].folder }}"
+        state: absent
+      delegate_to: localhost
+      when: vm_info is defined and vm_info.virtual_machines[0].folder is defined
+

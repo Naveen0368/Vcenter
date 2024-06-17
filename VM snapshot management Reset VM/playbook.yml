@@ -1,0 +1,52 @@
+---
+- name: VM Snapshot Management and Reset
+  hosts: localhost
+  gather_facts: no
+  vars:
+    vcenter_hostname: "10.128.7.21"
+    vcenter_username: "devops@vsphere.local"
+    vcenter_password: "jC3`@JRrW9m"
+    vcenter_validate_certs: False
+    vm_name: "vm-test-12-06"  # The name of the VM to snapshot and reset
+    datacenter_name: "GLOBAL-SF10-LAB"  # The name of the vSphere datacenter
+    folder_name: "vm"  # The folder where the VM is located
+    snapshot_name: "Pre-Scale-Snapshot"
+    snapshot_description: "Snapshot before scaling operations"
+
+  tasks:
+    - name: Take a snapshot before scaling
+      community.vmware.vmware_guest_snapshot:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ folder_name }}"
+        name: "{{ vm_name }}"
+        state: present
+        snapshot_name: "{{ snapshot_name }}"
+        description: "{{ snapshot_description }}"
+        memory_dump: True
+        quiesce: False
+
+    - name: Power off the VM
+      community.vmware.vmware_guest_powerstate:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ folder_name }}"
+        name: "{{ vm_name }}"
+        state: powered-off
+
+    - name: Power on the VM
+      community.vmware.vmware_guest_powerstate:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ folder_name }}"
+        name: "{{ vm_name }}"
+        state: powered-on

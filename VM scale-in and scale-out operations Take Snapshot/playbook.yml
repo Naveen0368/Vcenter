@@ -1,0 +1,105 @@
+---
+- name: VM Scale-In and Scale-Out Operations and Take Snapshot
+  hosts: localhost
+  gather_facts: no
+  vars:
+    vcenter_hostname: "10.128.7.21"
+    vcenter_username: "devops@vsphere.local"
+    vcenter_password: "jC3`@JRrW9m"
+    vcenter_validate_certs: False
+    vm_name: "vm-test-30-05"  # The name of the VM to scale and snapshot
+    datacenter_name: "GLOBAL-SF10-LAB"  # The name of the vSphere datacenter
+    folder_name: "vm"  # The folder where the VM is located
+    snapshot_name: "Pre-Scale-Snapshot"
+    snapshot_description: "Snapshot before scaling operations"
+    scale_out_cpu: 4  # Number of CPUs to set during scale out
+    scale_out_memory_mb: 8192  # Memory in MB to set during scale out
+    scale_in_cpu: 2  # Number of CPUs to set during scale in
+    scale_in_memory_mb: 4096  # Memory in MB to set during scale in
+
+  tasks:
+    - name: Gather VM info
+      community.vmware.vmware_vm_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        vm_name: "{{ vm_name }}"
+      register: vm_info
+
+    - name: Take a snapshot before scaling
+      community.vmware.vmware_guest_snapshot:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ folder_name }}"
+        name: "{{ vm_name }}"
+        state: present
+        snapshot_name: "{{ snapshot_name }}"
+        description: "{{ snapshot_description }}"
+        memory_dump: True
+        quiesce: False
+
+    - name: Scale out - Increase CPU and Memory
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ folder_name }}"
+        name: "{{ vm_name }}"
+        state: poweredon
+        hardware:
+          num_cpus: "{{ scale_out_cpu }}"
+          memory_mb: "{{ scale_out_memory_mb }}"
+
+    - name: Wait for the VM to be in a stable state after scaling out
+      pause:
+        minutes: 2
+
+    - name: Verify the VM hardware configuration after scale out
+      community.vmware.vmware_vm_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        vm_name: "{{ vm_name }}"
+      register: vm_info_post_scale_out
+
+    - name: Debug info after scaling out
+      debug:
+        msg: "{{ vm_info_post_scale_out }}"
+
+    - name: Scale in - Decrease CPU and Memory
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ folder_name }}"
+        name: "{{ vm_name }}"
+        state: poweredon
+        hardware:
+          num_cpus: "{{ scale_in_cpu }}"
+          memory_mb: "{{ scale_in_memory_mb }}"
+
+    - name: Wait for the VM to be in a stable state after scaling in
+      pause:
+        minutes: 2
+
+    - name: Verify the VM hardware configuration after scale in
+      community.vmware.vmware_vm_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        vm_name: "{{ vm_name }}"
+      register: vm_info_post_scale_in
+
+    - name: Debug info after scaling in
+      debug:
+        msg: "{{ vm_info_post_scale_in }}"

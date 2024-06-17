@@ -1,0 +1,31 @@
+---
+- name: Unmount VMware Tools and Check Disk Space Utilization
+  hosts: ubuntu_servers
+  become: yes
+  become_method: sudo
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Find VMware Tools mount point
+      shell: |
+        mount | grep 'vmware-tools' | awk '{print $3}'
+      register: vmware_tools_mount
+      ignore_errors: yes
+
+    - name: Unmount VMware Tools if mounted
+      command: umount "{{ vmware_tools_mount.stdout }}"
+      when: vmware_tools_mount.stdout != ""
+
+    - name: Check disk space utilization
+      shell: df -h
+      register: disk_utilization
+
+    - name: Print disk space utilization
+      debug:
+        msg: "{{ disk_utilization.stdout }}"
+
+    - name: Perform post-unmount tasks (if any)
+      debug:
+        msg: "VMware Tools unmounted and disk space utilization checked successfully"
+

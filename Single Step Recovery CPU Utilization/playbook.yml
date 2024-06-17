@@ -1,0 +1,51 @@
+---
+- name: Single Step Recovery for CPU Utilization
+  hosts: ubuntu_servers
+  become: yes
+  become_method: sudo
+  vars:
+    cpu_threshold: 80  # CPU utilization threshold percentage
+    check_interval: 60  # Interval in seconds between CPU checks
+  tasks:
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Check current CPU utilization
+      shell: "top -bn1 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}'"
+      register: cpu_utilization
+
+    - name: Print current CPU utilization
+      debug:
+        msg: "Current CPU utilization is {{ cpu_utilization.stdout }}%"
+
+    - name: Determine if CPU utilization exceeds threshold
+      set_fact:
+        cpu_exceeds_threshold: "{{ cpu_utilization.stdout | float > cpu_threshold }}"
+
+    - name: Take action if CPU utilization exceeds threshold
+      block:
+        - name: Check if Apache service is running
+          shell: systemctl is-active apache2
+          register: apache_status
+          ignore_errors: yes
+
+        - name: Restart Apache service if running
+          service:
+            name: apache2
+            state: restarted
+          when: apache_status.stdout == 'active'
+      when: cpu_exceeds_threshold
+
+    - name: Wait for the next check interval
+      pause:
+        seconds: "{{ check_interval }}"
+
+    - name: Re-run the playbook if CPU utilization exceeds threshold
+      include_tasks: cpu_utilization_recovery.yml
+      when: cpu_exceeds_threshold
+
+    - name: Perform post-check tasks (if any)
+      debug:
+        msg: "CPU utilization is within normal limits."
+      when: not cpu_exceeds_threshold
+

@@ -1,33 +1,8 @@
-variable "vsphere_user" {
-  description = "vSphere username"
-  default     = "devops@vsphere.local"
-}
-
-variable "vsphere_password" {
-  description = "vSphere password"
-  default     = "jC3`@JRrW9m"
-}
-
-variable "vsphere_server" {
-  description = "vSphere server IP"
-  default     = "10.128.7.21"
-}
-
-variable "allow_unverified_ssl" {
-  description = "Whether to allow unverified SSL certificates"
-  default     = true
-}
-
-variable "vm_name" {
-  description = "Name for the virtual machine"
-  type        = string
-}
-
 provider "vsphere" {
-  user                 = var.vsphere_user
-  password             = var.vsphere_password
-  vsphere_server       = var.vsphere_server
-  allow_unverified_ssl = var.allow_unverified_ssl
+  user                 = "devops@vsphere.local" # Replace with your vSphere username
+  password             = "jC3`@JRrW9m"          # Replace with your vSphere password
+  vsphere_server       = "10.128.7.21"          # Replace with your vSphere server IP
+  allow_unverified_ssl = true
 }
 
 data "vsphere_datacenter" "dc" {
@@ -60,7 +35,7 @@ data "vsphere_host" "host" {
 }
 
 resource "vsphere_virtual_machine" "vm" {
-  name             = "vm-test-12-06"
+  name             = "vm-test-30-05"
   resource_pool_id = data.vsphere_compute_cluster.cluster.resource_pool_id
   datastore_id     = data.vsphere_datastore.datastore.id
   host_system_id   = data.vsphere_host.host.id
@@ -69,7 +44,6 @@ resource "vsphere_virtual_machine" "vm" {
   memory    = 4096
   guest_id  = data.vsphere_virtual_machine.template.guest_id
   scsi_type = data.vsphere_virtual_machine.template.scsi_type
-
 
   network_interface {
     network_id   = data.vsphere_network.network.id
@@ -85,13 +59,5 @@ resource "vsphere_virtual_machine" "vm" {
 
   clone {
     template_uuid = data.vsphere_virtual_machine.template.id
-  }
-}
-
-output "vm_details" {
-  value = {
-    vm_name    = vsphere_virtual_machine.vm.name
-    host_name  = data.vsphere_host.host.name
-    ip_address = vsphere_virtual_machine.vm.default_ip_address
   }
 }
